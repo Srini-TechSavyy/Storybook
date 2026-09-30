@@ -17,7 +17,9 @@ export type StoryInput = {
   content: string;
 };
 
-const HAS_DATABASE_URL = Boolean(process.env["DATABASE_URL"]);
+function hasDatabaseUrl(): boolean {
+  return Boolean(process.env["DATABASE_URL"]);
+}
 
 function db() {
   const url = process.env["DATABASE_URL"];
@@ -51,25 +53,30 @@ const SAMPLE_STORIES: StoryInput[] = [
   },
 ];
 
-const memoryStories: Story[] = SAMPLE_STORIES.map((story) => {
-  const now = new Date().toISOString();
-  return {
-    id: crypto.randomUUID(),
-    title: story.title,
-    description: story.description ?? null,
-    content: story.content,
-    category: story.category ?? null,
-    created_at: now,
-    updated_at: now,
-  };
-});
+let memoryStories: Story[] | undefined;
+
+function getMemoryStories(): Story[] {
+  if (!memoryStories) {
+    const now = new Date().toISOString();
+    memoryStories = SAMPLE_STORIES.map((story) => ({
+      id: crypto.randomUUID(),
+      title: story.title,
+      description: story.description ?? null,
+      content: story.content,
+      category: story.category ?? null,
+      created_at: now,
+      updated_at: now,
+    }));
+  }
+  return memoryStories;
+}
 
 function cloneMemoryStories(): Story[] {
-  return memoryStories.map((story) => ({ ...story }));
+  return getMemoryStories().map((story) => ({ ...story }));
 }
 
 export async function ensureSchema(): Promise<void> {
-  if (!HAS_DATABASE_URL) {
+  if (!hasDatabaseUrl()) {
     return;
   }
   if (!schemaReady) {
@@ -105,7 +112,7 @@ export async function ensureSchema(): Promise<void> {
 }
 
 export async function listStories(): Promise<Story[]> {
-  if (!HAS_DATABASE_URL) {
+  if (!hasDatabaseUrl()) {
     return cloneMemoryStories();
   }
   await ensureSchema();
@@ -118,7 +125,7 @@ export async function listStories(): Promise<Story[]> {
 }
 
 export async function getStory(id: string): Promise<Story | null> {
-  if (!HAS_DATABASE_URL) {
+  if (!hasDatabaseUrl()) {
     return cloneMemoryStories().find((story) => story.id === id) ?? null;
   }
   await ensureSchema();
@@ -132,7 +139,7 @@ export async function getStory(id: string): Promise<Story | null> {
 }
 
 export async function insertStory(input: StoryInput): Promise<Story> {
-  if (!HAS_DATABASE_URL) {
+  if (!hasDatabaseUrl()) {
     const now = new Date().toISOString();
     const story: Story = {
       id: crypto.randomUUID(),
@@ -143,7 +150,7 @@ export async function insertStory(input: StoryInput): Promise<Story> {
       created_at: now,
       updated_at: now,
     };
-    memoryStories.unshift(story);
+    getMemoryStories().unshift(story);
     return { ...story };
   }
   await ensureSchema();
@@ -157,7 +164,7 @@ export async function insertStory(input: StoryInput): Promise<Story> {
 }
 
 export async function insertStories(inputs: StoryInput[]): Promise<number> {
-  if (!HAS_DATABASE_URL) {
+  if (!hasDatabaseUrl()) {
     const stories = inputs.map((input) => {
       const now = new Date().toISOString();
       return {
@@ -170,7 +177,7 @@ export async function insertStories(inputs: StoryInput[]): Promise<number> {
         updated_at: now,
       } satisfies Story;
     });
-    memoryStories.unshift(...stories.reverse());
+    getMemoryStories().unshift(...stories.reverse());
     return stories.length;
   }
   await ensureSchema();
@@ -183,10 +190,11 @@ export async function insertStories(inputs: StoryInput[]): Promise<number> {
 }
 
 export async function updateStory(id: string, input: StoryInput): Promise<Story | null> {
-  if (!HAS_DATABASE_URL) {
-    const index = memoryStories.findIndex((story) => story.id === id);
+  if (!hasDatabaseUrl()) {
+    const stories = getMemoryStories();
+    const index = stories.findIndex((story) => story.id === id);
     if (index === -1) return null;
-    const existing = memoryStories[index]!;
+    const existing = stories[index]!;
     const updated: Story = {
       ...existing,
       title: input.title,
@@ -195,7 +203,7 @@ export async function updateStory(id: string, input: StoryInput): Promise<Story 
       category: input.category ?? null,
       updated_at: new Date().toISOString(),
     };
-    memoryStories[index] = updated;
+    stories[index] = updated;
     return { ...updated };
   }
   await ensureSchema();
@@ -214,10 +222,11 @@ export async function updateStory(id: string, input: StoryInput): Promise<Story 
 }
 
 export async function deleteStory(id: string): Promise<boolean> {
-  if (!HAS_DATABASE_URL) {
-    const index = memoryStories.findIndex((story) => story.id === id);
+  if (!hasDatabaseUrl()) {
+    const stories = getMemoryStories();
+    const index = stories.findIndex((story) => story.id === id);
     if (index === -1) return false;
-    memoryStories.splice(index, 1);
+    stories.splice(index, 1);
     return true;
   }
   await ensureSchema();
