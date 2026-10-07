@@ -121,15 +121,16 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-HM8E0DJYVT"></script>
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-HM8E0DJYVT"
+        />
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){window.dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-HM8E0DJYVT');
-            `,
+            __html: String.raw`window.dataLayer = window.dataLayer || [];
+function gtag(){window.dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-HM8E0DJYVT');`,
           }}
         />
       </head>
